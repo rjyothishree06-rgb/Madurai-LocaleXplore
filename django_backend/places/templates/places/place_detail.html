@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ place.name }}</title>
+</head>
+
+<body>
+
+<h1>{{ place.name }}</h1>
+
+<p><strong>Category:</strong> {{ place.category }}</p>
+
+<p><strong>Description:</strong></p>
+<p>{{ place.description }}</p>
+
+<p><strong>Address:</strong> {{ place.address }}</p>
+
+{% if place.image %}
+    <img src="{{ place.image }}" alt="{{ place.name }}" width="300">
+{% endif %}
+
+<br><br>
+
+<a href="{% url 'place_update' place.pk %}">Edit Place</a>
+
+<br><br>
+
+<a href="{% url 'place_delete' place.pk %}">Delete Place</a>
+
+<br><br>
+
+<a href="{% url 'place_list' %}">Back to Places</a>
+
+</body>
+</html>

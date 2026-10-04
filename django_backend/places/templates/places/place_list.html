@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Madurai Tourist Places</title>
+</head>
+
+<body>
+
+<h1>Madurai Tourist Places</h1>
+
+<a href="{% url 'place_create' %}">Add New Place</a>
+
+<hr>
+
+{% for place in places %}
+
+<h2>
+    <a href="{% url 'place_detail' place.pk %}">
+        {{ place.name }}
+    </a>
+</h2>
+
+<p><strong>Category:</strong> {{ place.category }}</p>
+<p>{{ place.description }}</p>
+<p><strong>Address:</strong> {{ place.address }}</p>
+
+<hr>
+
+{% empty %}
+
+<p>No tourist places available.</p>
+
+{% endfor %}
+
+</body>
+</html>

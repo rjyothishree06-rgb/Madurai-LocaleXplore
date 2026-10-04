@@ -1,0 +1,37 @@
+[
+  {
+    "id": "trip_heritage_1day",
+    "title": "1-Day Royal Heritage & Spiritual Trail",
+    "duration": "1 Day (8-9 Hours)",
+    "bestFor": "First-time Tourists, Families, History Lovers",
+    "image": "https://images.unsplash.com/photo-1609946782782-b7e1279a0b93?auto=format&fit=crop&w=800&q=80",
+    "estimatedCost": 650,
+    "stops": [
+      { "time": "08:00 AM", "title": "Breakfast at Murugan Idli Shop", "locationId": "food_murugan_idli", "estCost": 90, "note": "Soft idlis with 4 chutneys" },
+      { "time": "09:15 AM", "title": "Meenakshi Amman Temple Tour", "locationId": "place_meenakshi", "estCost": 20, "note": "Explore 1000 Pillar Hall & Lotus Tank" },
+      { "time": "12:30 PM", "title": "Authentic Lunch at Konar Mess", "locationId": "food_karidosa", "estCost": 220, "note": "Original Kari Dosa & Mutton Special" },
+      { "time": "02:00 PM", "title": "Thirumalai Nayakkar Mahal Walk", "locationId": "place_thirumalai", "estCost": 15, "note": "Marvel at grand Italian Dravidian pillars" },
+      { "time": "04:30 PM", "title": "Sunset at Teppakulam Temple Tank", "locationId": "place_teppakulam", "estCost": 0, "note": "Scenic breeze & island mandapam photos" },
+      { "time": "06:30 PM", "title": "Chilled Jigarthanda & Halwa Treat", "locationId": "food_jigarthanda", "estCost": 100, "note": "Cool down with special basundi drink" }
+    ],
+    "transitMode": "Town Bus #700 / Auto Rickshaw",
+    "highlights": ["Meenakshi Temple", "Nayakkar Mahal", "Kari Dosa", "Jigarthanda"]
+  },
+  {
+    "id": "trip_foodie_night",
+    "title": "Madurai Street Foodie & Night Market Trail",
+    "duration": "5 Hours (Evening)",
+    "bestFor": "Food Lovers, Couples, Night Owls",
+    "image": "https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=800&q=80",
+    "estimatedCost": 550,
+    "stops": [
+      { "time": "05:00 PM", "title": "Gandhi Museum & Heritage Walk", "locationId": "place_gandhi_museum", "estCost": 10, "note": "Freedom movement history & gardens" },
+      { "time": "06:45 PM", "title": "East Avani Moola Jigarthanda Stop", "locationId": "food_jigarthanda", "estCost": 80, "note": "Famous original badam pisin drink" },
+      { "time": "07:45 PM", "title": "Simmakkal Bun Parotta Feast", "locationId": "food_bun_parotta", "estCost": 160, "note": "Fluffy bun parotta with spicy salna" },
+      { "time": "09:00 PM", "title": "Night Shopping near Temple Street", "locationId": "place_meenakshi", "estCost": 0, "note": "Brassware, handloom sarees & handicrafts" },
+      { "time": "10:00 PM", "title": "Hot Nagapattinam Halwa Night Cap", "locationId": "food_halwa", "estCost": 90, "note": "Fresh pure ghee halwa on leaf" }
+    ],
+    "transitMode": "Auto Rickshaw / Share Auto",
+    "highlights": ["Bun Parotta", "Jigarthanda", "Night Market", "Ghee Halwa"]
+  }
+]

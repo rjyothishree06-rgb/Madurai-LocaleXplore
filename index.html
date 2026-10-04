@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="maduraiApp">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Madurai LocaleXplore | Smart Local Trip Planner & Cost Estimator</title>
+  <meta name="description" content="Discover Madurai's famous heritage temples, legendary local food spots, town bus routes, cab fares, and smart custom itineraries with cost estimations.">
+  
+  <!-- Leaflet CSS for Interactive Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- App Custom Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body ng-controller="MainController">
+
+  <!-- TOP NAVIGATION BAR -->
+  <nav class="navbar">
+    <div class="nav-brand" style="display:flex; align-items:center; gap:12px;">
+      <!-- CURRENT LOCATION & WEATHER INDICATOR (REMOVED) -->
+
+      <span>🏛️ Madurai LocaleXplore</span>
+      <span class="city-tag">MADURAI, TN</span>
+    </div>
+
+
+    <div class="nav-tabs">
+      <a href="#" class="nav-tab" ng-class="{active: currentTab === 'explore'}" ng-click="switchTab('explore')">🗺️ Explore Places & Food</a>
+      <a href="#" class="nav-tab" ng-class="{active: currentTab === 'transit'}" ng-click="switchTab('transit')">🚌 Local Bus & Cabs</a>
+      <a href="#" class="nav-tab" ng-class="{active: currentTab === 'itineraries'}" ng-click="switchTab('itineraries')">📅 Itineraries</a>
+      <a href="#" class="nav-tab" ng-class="{active: currentTab === 'confirmed'}" ng-click="switchTab('confirmed')">🎯 My Confirmed Trips</a>
+
+    </div>
+
+    <div class="nav-user" id="nav-user-container">
+      <!-- Signed In State (Opens Full Profile Page) -->
+      <div class="user-pill dropdown-trigger" id="user-dropdown-btn" ng-if="currentUser" ng-click="switchTab('profile')">
+        <span>Profile</span>
+      </div>
+      <div class="user-dropdown hidden" id="user-dropdown-menu" ng-if="currentUser">
+        <div class="dropdown-header">
+          <strong>{{ currentUser.name }}</strong>
+          <small>{{ currentUser.email }}</small>
+        </div>
+        <hr>
+        <a href="#" ng-click="switchTab('profile')">👤 View Full Profile</a>
+        <a href="#" ng-click="switchTab('confirmed')">🎯 My Confirmed Trips</a>
+        <a href="#" ng-click="logout()" class="text-danger">🚪 Log Out</a>
+      </div>
+
+      <!-- Signed Out State -->
+      <a href="#" class="btn btn-outline" ng-if="!currentUser" ng-click="openAuth('login')">
+        <span>👤</span> Sign In / Register
+      </a>
+    </div>
+  </nav>
+
+  <!-- DIRECTORY 1: Live City Transit Strip — horizontal driving marquee animation -->
+  <div class="transit-strip" aria-hidden="true">
+    <div class="marquee-track">
+      <div class="marquee-set">
+        <span class="strip-item"><span class="icon">🚌</span><span class="label">Bus <strong>7A</strong> → Meenakshi Temple</span></span>
+        <span class="strip-item"><span class="icon">🚕</span><span class="label">Cab near <strong>Periyar Bus Stand</strong></span></span>
+        <span class="strip-item"><span class="icon">🛺</span><span class="label">Auto stand → <strong>Goripalayam</strong></span></span>
+        <span class="strip-item"><span class="icon">🚍</span><span class="label">Bus <strong>17</strong> → Teppakulam</span></span>
+        <span class="strip-item"><span class="icon">🚖</span><span class="label">Cab → <strong>Alagar Kovil</strong> · 45 min</span></span>
+      </div>
+      <div class="marquee-set" aria-hidden="true">
+        <span class="strip-item"><span class="icon">🚌</span><span class="label">Bus <strong>7A</strong> → Meenakshi Temple</span></span>
+        <span class="strip-item"><span class="icon">🚕</span><span class="label">Cab near <strong>Periyar Bus Stand</strong></span></span>
+        <span class="strip-item"><span class="icon">🛺</span><span class="label">Auto stand → <strong>Goripalayam</strong></span></span>
+        <span class="strip-item"><span class="icon">🚍</span><span class="label">Bus <strong>17</strong> → Teppakulam</span></span>
+        <span class="strip-item"><span class="icon">🚖</span><span class="label">Cab → <strong>Alagar Kovil</strong> · 45 min</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 1: EXPLORE PLACES & FOOD (HOME) -->
+  <main id="view-explore" class="view-panel" ng-show="currentTab === 'explore'">
+    <header class="hero-banner">
+      <h1 class="hero-title">Where are we exploring in Madurai?</h1>
+      <p class="hero-subtitle">Search over 25+ iconic temples, royal palaces, food spots, hill sanctuaries, and local bazaars.</p>
+      
+      <div class="search-bar-wrap">
+        <input type="text" ng-model="searchQuery" placeholder="Search any place in Madurai (e.g. Meenakshi, Jigarthanda, Samanar, Alagar Kovil, Goripalayam)...">
+        <button class="btn btn-primary" ng-click="searchPlaces()">
+            🔍 Search Madurai
+        </button>
+        <p ng-show="showWelcome" style="margin-top:10px; color:green; font-weight:bold;">
+         Welcome! Start exploring Madurai's attractions.
+        </p>
+      </div>
+
+      <!-- CUSTOM DIRECTIVE: <category-pill> replaces the raw ng-repeat button and self-animates ("swoosh pop") when active -->
+      <div class="category-pills-row" id="category-pills-container">
+        <category-pill
+            ng-repeat="cat in categories"
+            cat="cat"
+            active="activeCategory"
+            on-select="setCategory(id)">
+        </category-pill>
+      </div>
+    </header>
+
+
+
+    <div class="container">
+      <!-- Recently Viewed Places -->
+      <div class="section-header" ng-if="recentPlaces.length">
+          <div>
+              <h2 class="section-title">🕒 Recently Viewed</h2>
+              <p class="section-subtitle">Places you opened recently</p>
+          </div>
+      </div>
+      <div class="places-grid" ng-if="recentPlaces.length" style="margin-bottom: 2rem;">
+          <div class="place-card clickable-card"
+               ng-repeat="place in recentPlaces track by $index"
+               ng-click="openSpotDetail(place, place.type)">
+              <div class="place-image-wrap"
+                   fallback-bg="{{place.image}}" fallback-type="{{place.type || 'place'}}">
+                  <span class="category-badge" ng-if="place.categoryLabel">{{ place.categoryLabel }}</span>
+                  <span class="rating-badge" ng-if="place.rating">⭐ {{place.rating}}</span>
+              </div>
+              <div class="place-body">
+                  <div class="place-title-row" style="display:flex; justify-content:space-between; align-items:center;">
+                      <h4>{{place.name}}</h4>
+                  </div>
+                  <p class="desc">{{place.description}}</p>
+                  <button class="btn btn-sm btn-primary w-full mt-2"
+                          ng-click="event.stopPropagation(); openSpotDetail(place, place.type)">
+                      View Again
+                  </button>
+              </div>
+          </div>
+      </div>
+      <!-- Destinations Section -->
+      <div class="section-header" id="places-section-header">
+        <div>
+          <h2 class="section-title">Destinations & Heritage Locations</h2>
+          <p class="section-subtitle">Click into any place card to view full story, timings, dress code, and transit options</p>
+        </div>
+      </div>
+
+      <div class="places-grid" id="explore-places-grid">
+        <div ng-repeat="place in places | filter:filterPlaces" swoosh-reveal swoosh-index="$index" class="place-card clickable-card" ng-click="openSpotDetail(place, 'place')">
+          <div class="place-image-wrap" fallback-bg="{{place.image}}" fallback-type="place">
+            <span class="category-badge">{{ place.categoryLabel }}</span>
+            <span class="rating-badge">⭐ {{ place.rating }}</span>
+          </div>
+          <div class="place-body">
+            
+            
+            <div class="place-title-row"
+                style="display:flex;
+                        justify-content:space-between;
+                        align-items:center;">
+
+                <h4>{{ place.name }}</h4>
+
+                <button
+                    class="btn favourite-btn"
+                    ng-class="{'is-favourited': isFavourite(place)}"
+                    style="padding:4px 8px;"
+                    ng-click="$event.stopPropagation(); addFavourite(place)">
+
+                    ❤️
+
+                </button>
+
+            </div>
+
+
+            <p class="desc">{{ place.description }}</p>
+            <div class="place-meta">
+              <span>🕒 {{ place.timings }}</span>
+              <span>🎟️ {{ place.entryFee === 0 ? 'Free Entry' : (place.entryFee | currency:"₹":0) }}</span>
+            </div>
+            <div class="bus-lines mb-2">
+              <strong>Transit:</strong> <span ng-repeat="b in place.busLines" class="bus-tag" style="margin-right: 4px;">{{ b }}</span>
+            </div>
+            <button class="btn btn-sm btn-primary w-full" ng-click="event.stopPropagation(); openSpotDetail(place, 'place')">
+              🔍 Click to View Full Details & History ➔
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Foods Section -->
+      <div class="section-header" id="foods-section-header" ng-show="activeCategory === 'all' || activeCategory === 'popular' || activeCategory === 'food'">
+        <div>
+          <h2 class="section-title">Famous Madurai Foods & Delicacies</h2>
+          <p class="section-subtitle">Must-try culinary icons from Jigarthanda to Kari Dosa and Bun Parotta</p>
+        </div>
+      </div>
+
+      <div class="foods-grid" id="explore-foods-grid" ng-show="activeCategory === 'all' || activeCategory === 'popular' || activeCategory === 'food'">
+        <div ng-repeat="food in foods | filter:filterFoods" class="food-card clickable-card" ng-click="openSpotDetail(food, 'food')">
+          <div class="food-image-wrap" fallback-bg="{{food.image}}" fallback-type="food">
+            <span class="food-price-tag">{{ food.price }}</span>
+          </div>
+          <div class="food-body">
+            <div class="food-title-row">
+              <h4>{{ food.name }}</h4>
+              <span class="rating">⭐ {{ food.rating }}</span>
+            </div>
+            <p class="spot-name">📍 {{ food.spotName }}</p>
+            <p class="desc">{{ food.description }}</p>
+            <div class="must-try-box">
+              <strong>Must Try:</strong> {{ food.mustTry }}
+            </div>
+            <button class="btn btn-sm btn-outline w-full mt-2" ng-click="event.stopPropagation(); openSpotDetail(food, 'food')">
+              😋 View Food Story & Location ➔
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==========================================
+          MY FAVOURITE PLACES
+      ========================================== -->
+
+      <div class="section-header" style="margin-top:40px;">
+          <div>
+              <h2 class="section-title">❤️ My Favourite Places</h2>
+              <p class="section-subtitle">
+                  Your saved tourist attractions and food spots
+              </p>
+          </div>
+      </div>
+
+      <div class="custom-trip-card">
+
+          <div
+              ng-if="favourites.length==0"
+              style="color:#64748b;">
+
+              No favourite places added.
+
+          </div>
+
+          
+             <favourite-card
+                ng-repeat="place in favourites track by $index"
+                place="place"
+                index="$index"
+                on-remove="removeFavourite(index)">
+            </favourite-card>
+
+
+
+          </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- VIEW 2: ITINERARIES (USER CREATED TRIPS) -->
+  <main id="view-itineraries" class="view-panel" ng-show="currentTab === 'itineraries'">
+    <div class="container" style="padding-top: 2rem;">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">📅 Custom Trip Itineraries</h2>
+          <p class="section-subtitle">Create, customize, and manage your own Madurai travel plans</p>
+        </div>
+      </div>
+
+      <!-- CREATE MY OWN TRIP SECTION -->
+      <div class="custom-trip-card" style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:24px; box-shadow:var(--shadow-md); margin-bottom:30px;">
+        <h3 style="margin-bottom:20px; font-size:1.3rem; color:var(--text-dark); display:flex; align-items:center; gap:8px;">
+          📝 Create My Own Trip
+        </h3>
+
+        <!-- Plan Name Input -->
+        <div style="margin-bottom: 20px;">
+          <label style="display:block; font-weight:700; margin-bottom:6px; color:#334155;">Plan Name:</label>
+          <input type="text" class="form-input" style="width: 100%; max-width: 500px; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:8px;" placeholder="e.g. My Madurai Temple Trip (Optional - auto default)" ng-model="newPlanTitle">
+          <small style="color:#64748b; display:block; margin-top:4px;">Leave blank for default date format (e.g., {{ generateDefaultPlanName() }})</small>
+        </div>
+
+        <!-- Search and Add Places -->
+        <div style="position:relative; margin-bottom: 20px;">
+          <label style="display:block; font-weight:700; margin-bottom:6px; color:#334155;">Search and add places:</label>
+          <input type="text" class="form-input" style="width: 100%; max-width: 500px; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:8px;" placeholder="🔍 Search places or food spots..." ng-model="tripSearch">
+          
+          <!-- Live Search Suggestions Dropdown -->
+          <div ng-if="tripSearch && !selectedPlace" style="position:absolute; z-index:100; background:white; border:1px solid #cbd5e1; border-radius:8px; width:100%; max-width:500px; max-height:240px; overflow-y:auto; box-shadow:0 10px 25px rgba(0,0,0,0.1); margin-top:4px;">
+            <div ng-repeat="place in places | filter:tripSearch" ng-click="selectPlace(place); addPlaceToTrip()" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f5f9; display:flex; justify-space-between; align-items:center;">
+              <div>
+                <strong style="color:var(--text-dark);">📍 {{ place.name }}</strong>
+                <br>
+                <small style="color:#64748b;">{{ place.categoryLabel || place.category }}</small>
+              </div>
+              <span style="color:var(--primary); font-weight:700; font-size:0.85rem;">+ Add</span>
+            </div>
+            <div ng-repeat="food in foods | filter:tripSearch" ng-click="selectPlace(food); addPlaceToTrip()" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong style="color:var(--text-dark);">🍽️ {{ food.name }}</strong>
+                <br>
+                <small style="color:#64748b;">Food Spot • {{ food.spotName }}</small>
+              </div>
+              <span style="color:var(--primary); font-weight:700; font-size:0.85rem;">+ Add</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected Places List -->
+        <div style="margin-bottom: 24px;">
+          <label style="display:block; font-weight:700; margin-bottom:8px; color:#334155;">Selected Places:</label>
+          
+          <div ng-if="customTrip.length === 0" style="color:#64748b; font-style:italic; padding:14px; background:#f8fafc; border-radius:10px; border:1.5px dashed #cbd5e1;">
+            No places added yet. Search and select places above to build your trip itinerary.
+          </div>
+
+          <div ng-repeat="place in customTrip track by $index" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; margin-bottom:10px; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.1rem;">📍</span>
+              <strong style="color:var(--text-dark); font-size:0.95rem;">{{ place.name }}</strong>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="display:flex; flex-direction:column; position:relative;">
+                <select class="form-input" style="width:160px; padding:6px 10px; font-size:0.85rem; border:1px solid #cbd5e1; border-radius:6px; background-color: white;" ng-model="place.estimatedTime" ng-options="time for time in timeOptions" ng-change="validateTempleTiming(place)">
+                  <option value="">Estimated time (optional)</option>
+                </select>
+                <div ng-if="place.timingWarning" style="color:#ef4444; font-size:0.75rem; margin-top:4px; max-width: 160px; line-height: 1.2;">
+                  ⚠️ This temple is closed at the selected time. Please choose another time.
+                </div>
+              </div>
+              
+              <button class="btn btn-outline" style="padding:4px 10px;" ng-click="movePlaceUp($index)" title="Move Up">↑</button>
+              <button class="btn btn-outline" style="padding:4px 10px;" ng-click="movePlaceDown($index)" title="Move Down">↓</button>
+              <button class="btn" style="padding:4px 10px; color:#ef4444; background:transparent;" ng-click="removePlace($index)" title="Remove Place">❌</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="padding:10px 24px; font-weight:700;" ng-click="createPlan()">
+          ➕ Create Plan
+        </button>
+      </div>
+
+      <!-- MY CREATED PLANS SECTION -->
+      <div style="margin-top: 30px;">
+        <h3 style="margin-bottom:16px; font-size:1.3rem; color:var(--text-dark); display:flex; align-items:center; gap:8px;">
+          📋 My Created Plans
+        </h3>
+
+        <div ng-if="createdPlans.length === 0" style="padding:24px; background:white; border-radius:14px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">
+          No pending created plans. Create your first plan above!
+        </div>
+
+        <div class="created-plans-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:20px;">
+          <div ng-repeat="plan in createdPlans" class="created-plan-card" style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; justify-content:space-between;">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                <h4 style="font-size:1.15rem; font-weight:800; color:var(--text-dark);">{{ plan.title }}</h4>
+                <span class="status-badge" style="background:#fef3c7; color:#b45309; font-size:0.75rem; padding:3px 8px; border-radius:12px; font-weight:700;">PENDING PLAN</span>
+              </div>
+
+              <p style="font-size:0.8rem; color:#64748b; margin-bottom:12px;">
+                📅 Created: {{ plan.createdDate }} • {{ plan.places.length }} Places
+              </p>
+
+              <div style="background:#f8fafc; border-radius:8px; padding:10px 12px; margin-bottom:15px; border:1px solid #f1f5f9;">
+                <strong style="font-size:0.85rem; color:#475569; display:block; margin-bottom:6px;">Places Included:</strong>
+                <div ng-repeat="p in plan.places" style="font-size:0.85rem; margin-bottom:4px; display:flex; justify-content:space-between;">
+                  <span>📍 {{ p.name }}</span>
+                  <span style="color:#64748b; font-size:0.8rem;">⏱️ {{ p.estimatedTime || 'Not specified' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:10px; border-top:1px solid #f1f5f9; padding-top:12px;">
+              <button class="btn btn-primary" style="flex:1;" ng-click="confirmCreatedPlan(plan)">
+                ✅ Confirm Plan
+              </button>
+              <button class="btn btn-outline" style="color:#ef4444; border-color:#fca5a5;" ng-click="deleteCreatedPlan(plan)">
+                🗑️ Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- VIEW 3: LOCAL BUS & CABS (INFORMATION ONLY) -->
+  <main id="view-transit" class="view-panel" ng-show="currentTab === 'transit'">
+    <div class="container" style="padding-top: 2rem;">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">🚌 Local Bus & Cabs Information</h2>
+          <p class="section-subtitle">Find available transportation options to your selected destination in Madurai</p>
+        </div>
+      </div>
+
+      <!-- Informational Disclaimer Note -->
+      <div class="info-banner" style="background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; padding:12px 18px; border-radius:10px; margin-bottom:24px; font-weight:600; font-size:0.9rem; display:flex; align-items:center; gap:8px;">
+        <span>ℹ️</span> Transportation information only. No booking or payment is provided.
+      </div>
+
+      <!-- Destination Search Section -->
+      <div class="transit-search-panel" style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:24px; box-shadow:var(--shadow-md); margin-bottom:30px;">
+        <h4 style="font-size:1.1rem; font-weight:700; color:var(--text-dark); margin-bottom:12px;">Where do you want to go?</h4>
+        
+        <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+          <select class="form-input" style="flex:1; min-width:280px; max-width:500px; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:8px; font-weight:600;" ng-model="transitDestinationId" ng-change="searchDestinationTransit()" ng-options="pt.id as pt.name group by pt.type for pt in transitPoints">
+          </select>
+
+          <button class="btn btn-primary" ng-click="searchDestinationTransit()" style="padding:10px 20px;">
+            🔍 Find Transportation Options
+          </button>
+        </div>
+      </div>
+
+      <!-- Transportation Results Section -->
+      <div id="transit-results" ng-if="transitDestinationResults">
+        <div style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:24px; box-shadow:var(--shadow-sm); margin-bottom:24px;">
+          <h3 style="font-size:1.25rem; font-weight:800; color:var(--text-dark); margin-bottom:16px;">
+            Transportation to: <span style="color:var(--primary);">{{ transitDestinationResults.destination.name }}</span>
+          </h3>
+
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px;">
+            <!-- BUS SECTION -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:18px;">
+              <h4 style="font-size:1.1rem; font-weight:800; color:var(--text-dark); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                🚌 BUS
+              </h4>
+
+              <div ng-if="transitDestinationResults.hasBuses">
+                <div ng-repeat="bus in transitDestinationResults.buses" style="background:white; border:1px solid #cbd5e1; border-radius:8px; padding:12px; margin-bottom:10px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <strong style="color:var(--primary); font-size:1rem;">Bus Number: {{ bus.busNumber }}</strong>
+                    <span style="font-size:0.85rem; font-weight:700; color:#1e293b; background:#e2e8f0; padding:2px 8px; border-radius:12px;">🕒 {{ bus.time }}</span>
+                  </div>
+                  <p style="font-size:0.85rem; color:#475569; margin:0;">
+                    <strong>Route:</strong> {{ bus.route }}
+                  </p>
+                </div>
+              </div>
+
+              <div ng-if="!transitDestinationResults.hasBuses" style="color:#64748b; font-size:0.9rem; font-style:italic; padding:10px 0;">
+                Information not available for this destination.
+              </div>
+            </div>
+
+            <!-- CAB SECTION -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:18px;">
+              <h4 style="font-size:1.1rem; font-weight:800; color:var(--text-dark); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                🚕 CAB
+              </h4>
+
+              <div ng-if="transitDestinationResults.hasCabs" style="background:white; border:1px solid #cbd5e1; border-radius:8px; padding:14px;">
+                <p style="font-size:0.9rem; margin-bottom:6px;"><strong>Availability:</strong> <span style="color:#16a34a; font-weight:700;">Available</span></p>
+                <p style="font-size:0.9rem; margin-bottom:6px;"><strong>Service type:</strong> {{ transitDestinationResults.cabInfo.serviceType }}</p>
+                <p style="font-size:0.9rem; margin-bottom:6px;"><strong>Estimated travel time:</strong> {{ transitDestinationResults.cabInfo.estimatedTravelTime }}</p>
+                <p style="font-size:0.9rem; margin:0;"><strong>Estimated fare:</strong> {{ transitDestinationResults.cabInfo.estimatedFare }}</p>
+              </div>
+
+              <div ng-if="!transitDestinationResults.hasCabs" style="color:#64748b; font-size:0.9rem; font-style:italic; padding:10px 0;">
+                Information not available for this destination.
+              </div>
+            </div>
+
+            <!-- AUTO SECTION -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:18px;">
+              <h4 style="font-size:1.1rem; font-weight:800; color:var(--text-dark); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                🛺 AUTO
+              </h4>
+
+              <div ng-if="transitDestinationResults.hasAutos" style="background:white; border:1px solid #cbd5e1; border-radius:8px; padding:14px;">
+                <p style="font-size:0.9rem; margin-bottom:6px;"><strong>Availability:</strong> <span style="color:#16a34a; font-weight:700;">Available</span></p>
+                <p style="font-size:0.9rem; margin-bottom:6px;"><strong>Service type:</strong> {{ transitDestinationResults.autoInfo.serviceType }}</p>
+                <p style="font-size:0.9rem; margin-bottom:6px;"><strong>Estimated travel time:</strong> {{ transitDestinationResults.autoInfo.estimatedTravelTime }}</p>
+                <p style="font-size:0.9rem; margin:0;"><strong>Estimated fare:</strong> {{ transitDestinationResults.autoInfo.estimatedFare }}</p>
+              </div>
+
+              <div ng-if="!transitDestinationResults.hasAutos" style="color:#64748b; font-size:0.9rem; font-style:italic; padding:10px 0;">
+                Information not available for this destination.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- VIEW 4: CONFIRMED TRIPS & LIVE MAP -->
+  <main id="view-confirmed" class="view-panel" ng-show="currentTab === 'confirmed'">
+    <div class="container" style="padding-top: 2rem;">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Your Confirmed Trips & Route Map</h2>
+          <p class="section-subtitle">Interactive map visualization, itemized cost breakdown, and trip summary</p>
+        </div>
+      </div>
+
+      <div class="confirmed-layout">
+        <!-- Confirmed Trips List Column -->
+        <div class="confirmed-list-col" id="confirmed-trips-list">
+          <div ng-if="confirmedTrips.length === 0" class="empty-state-card">
+            <div class="icon">🧭</div>
+            <h4>No Confirmed Trips Saved Yet</h4>
+            <p>Explore places in Madurai, choose a sample itinerary, or search local bus/cab routes to confirm your trip estimation!</p>
+            <button class="btn btn-primary" ng-click="switchTab('explore')">Start Exploring Madurai</button>
+          </div>
+
+          <div ng-repeat="trip in confirmedTrips" swoosh-reveal swoosh-index="$index" class="confirmed-trip-card" id="trip-card-{{ trip.id }}">
+            <div class="trip-badge-header">
+              <span class="booking-ref">Ref: {{ trip.bookingRef || trip.id }}</span>
+              <span class="status-badge" style="background: {{ trip.status === 'COMPLETED' ? '#dcfce7' : '#e0f2fe' }}; color: {{ trip.status === 'COMPLETED' ? '#15803d' : '#0369a1' }}; font-weight:700;">
+                {{ trip.status === 'COMPLETED' ? '🎉 COMPLETED' : '✅ TRIP CONFIRMED' }}
+              </span>
+            </div>
+            
+            <div class="trip-main-info">
+              <h3>{{ trip.title }}</h3>
+              <p class="meta">
+                👤 <strong>Traveler:</strong> {{ trip.userName || currentUser.name }} ({{ trip.userPhone || currentUser.phone }}) • 📅 <strong>Confirmed:</strong> {{ trip.bookedAt || trip.createdDate }}
+              </p>
+              
+              <!-- Itemized Places & Estimated Time -->
+              <div style="background:#f8fafc; border-radius:8px; padding:10px 14px; margin:10px 0; border:1px solid #f1f5f9;">
+                <strong style="font-size:0.85rem; color:#475569; display:block; margin-bottom:6px;">Itinerary Places & Duration:</strong>
+                <div ng-if="trip.places" ng-repeat="p in trip.places" style="font-size:0.85rem; padding:3px 0; display:flex; justify-content:space-between;">
+                  <span>📍 <strong>{{ p.name }}</strong></span>
+                  <span style="color:#64748b;">Estimated time: {{ p.estimatedTime || 'Not specified' }}</span>
+                </div>
+                <div ng-if="!trip.places && trip.stops" ng-repeat="s in trip.stops" style="font-size:0.85rem; padding:3px 0; display:flex; justify-content:space-between;">
+                  <span>📍 <strong>{{ s.title }}</strong></span>
+                  <span style="color:#64748b;">Time: {{ s.time }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- CUSTOM DIRECTIVE: <live-trip-tracker> -->
+            <live-trip-tracker trip="trip" ng-if="trip.stops && trip.stops.length > 0"></live-trip-tracker>
+
+            <!-- CUSTOM DIRECTIVE: <cost-breakdown-panel> -->
+            <cost-breakdown-panel trip="trip" ng-if="trip.stops && trip.stops.length > 0"></cost-breakdown-panel>
+
+            <div class="trip-card-actions" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+              <button class="btn btn-primary" ng-click="plotTripRoute(trip)" ng-if="trip.stops && trip.stops.length > 0">
+                🗺️ View Route on Map
+              </button>
+              <button class="btn btn-accent" ng-click="markTripCompleted(trip)" ng-disabled="trip.status === 'COMPLETED'">
+                {{ trip.status === 'COMPLETED' ? '✓ Completed' : 'Mark as Completed' }}
+              </button>
+              <button class="btn btn-outline" style="color:#ef4444; border-color:#fca5a5;" ng-click="deleteConfirmedTrip(trip)">
+                🗑️ Delete Trip
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Map Column -->
+        <div class="map-card-container">
+          <div class="map-header">
+            <strong>🗺️ Madurai Live Route Map</strong>
+            <small>OpenStreetMap • GPS Tracked</small>
+          </div>
+          <div id="madurai-map"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- VIEW 5: USER PROFILE PAGE -->
+  <main id="view-profile" class="view-panel" ng-show="currentTab === 'profile'">
+    <div class="container" style="padding-top: 2rem;">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">👤 User Profile & Activity</h2>
+          <p class="section-subtitle">Manage your profile, view trip statistics, visited destinations, and review history</p>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:24px; margin-bottom:30px;">
+        <!-- User Card & Details Block -->
+        <div style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:24px; box-shadow:var(--shadow-sm);">
+          <div ng-if="!isEditingProfile">
+            <div class="profile-user-card" style="display:flex; align-items:center; gap:16px; margin-bottom:20px;">
+              <div class="avatar-lg">
+                {{ (currentUser.name || 'U').slice(0,2).toUpperCase() }}
+              </div>
+              <div class="profile-user-info">
+                <h3 style="font-size:1.25rem; font-weight:800; color:var(--text-dark); margin:0;">{{ currentUser.name || 'Explorer' }}</h3>
+                <span class="badge-role" style="background:#eff6ff; color:var(--primary); font-size:0.75rem; padding:2px 8px; border-radius:12px; font-weight:700;">Madurai Explorer</span>
+              </div>
+              <button class="btn btn-outline btn-sm" ng-click="startEditProfile()" style="margin-left:auto;">
+                ✏️ Edit
+              </button>
+              <button class="btn btn-sm" ng-click="logout()" style="margin-left: 8px; background-color: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                🚪 Logout
+              </button>
+            </div>
+
+            <div class="profile-details-grid">
+              <div class="profile-detail-item" style="margin-bottom:12px;">
+                <span class="detail-label" style="display:block; font-size:0.75rem; color:#64748b; font-weight:700;">👤 FULL NAME</span>
+                <strong class="detail-value" style="font-size:0.95rem; color:#0f172a;">{{ currentUser.name || 'Not provided' }}</strong>
+              </div>
+              <div class="profile-detail-item" style="margin-bottom:12px;">
+                <span class="detail-label" style="display:block; font-size:0.75rem; color:#64748b; font-weight:700;">📱 PHONE NUMBER</span>
+                <strong class="detail-value" style="font-size:0.95rem; color:#0f172a;">{{ currentUser.phone || 'Not provided' }}</strong>
+              </div>
+              <div class="profile-detail-item" style="margin-bottom:12px;">
+                <span class="detail-label" style="display:block; font-size:0.75rem; color:#64748b; font-weight:700;">📧 EMAIL ADDRESS</span>
+                <strong class="detail-value" style="font-size:0.95rem; color:#0f172a;">{{ currentUser.email || 'Not provided' }}</strong>
+              </div>
+              <div class="profile-detail-item" style="margin-bottom:12px;">
+                <span class="detail-label" style="display:block; font-size:0.75rem; color:#64748b; font-weight:700;">📍 ADDRESS</span>
+                <strong class="detail-value" style="font-size:0.95rem; color:#0f172a;">{{ currentUser.address || 'Madurai, TN' }}</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Edit Profile Mode -->
+          <div ng-if="isEditingProfile">
+            <h4 style="font-size:1.1rem; font-weight:800; margin-bottom:16px;">✏️ Edit Explorer Profile</h4>
+            <form ng-submit="saveProfile()">
+              <div class="form-group" style="margin-bottom:12px;">
+                <label style="font-weight:700; font-size:0.85rem;">Full Name</label>
+                <input type="text" class="form-input" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px;" ng-model="editProfileForm.name" required>
+              </div>
+              <div class="form-group" style="margin-bottom:12px;">
+                <label style="font-weight:700; font-size:0.85rem;">Phone Number</label>
+                <input type="tel" class="form-input" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px;" ng-model="editProfileForm.phone" required>
+              </div>
+              <div class="form-group" style="margin-bottom:12px;">
+                <label style="font-weight:700; font-size:0.85rem;">Email Address</label>
+                <input type="email" class="form-input" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px;" ng-model="editProfileForm.email" required>
+              </div>
+              <div class="form-group" style="margin-bottom:16px;">
+                <label style="font-weight:700; font-size:0.85rem;">Address</label>
+                <textarea class="form-input" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px;" ng-model="editProfileForm.address" rows="2" placeholder="Enter address"></textarea>
+              </div>
+              <div style="display:flex; gap:10px;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">💾 Save</button>
+                <button type="button" class="btn btn-outline" ng-click="cancelEditProfile()">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Statistics & Visited Places -->
+        <div style="display:flex; flex-direction:column; gap:20px;">
+          <div style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:24px; box-shadow:var(--shadow-sm);">
+            <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-dark); margin-bottom:16px;">📊 Trip & Activity Statistics</h3>
+            
+            <div class="trip-stats-grid" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;">
+              <div class="stat-card stat-total">
+                <span class="stat-num">{{ userStatistics.total_trips }}</span>
+                <span class="stat-lbl">Total Trips</span>
+              </div>
+              <div class="stat-card stat-confirmed">
+                <span class="stat-num">{{ getUserTripMetrics().confirmedCount }}</span>
+                <span class="stat-lbl">Confirmed Trips</span>
+              </div>
+              <div class="stat-card stat-pending">
+                <span class="stat-num">{{ userStatistics.reviews_given || 0 }}</span>
+                <span class="stat-lbl">Reviews Given</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:24px; box-shadow:var(--shadow-sm);">
+            <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-dark); margin-bottom:16px;">📍 Places Visited ({{ userStatistics.places_visited }})</h3>
+            
+            <div class="visited-places-box">
+              <div ng-if="userStatistics.places_visited === 0" class="visited-empty-state">
+                <span>🗺️</span>
+                <p>No completed trips yet. Complete a trip in <strong>My Confirmed Trips</strong> to automatically log visited places here!</p>
+              </div>
+              <div class="visited-places-tags" ng-if="userStatistics.places_visited > 0">
+                <div ng-repeat="placeName in userStatistics.places_visited_list" class="visited-place-pill">
+                  <span class="check-icon">✓</span>
+                  <span class="place-name">{{ placeName }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Reviews & Ratings Section -->
+      <div style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:24px; box-shadow:var(--shadow-sm); margin-bottom:30px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3 style="font-size:1.25rem; font-weight:800; color:var(--text-dark); margin:0;">⭐ My Reviews & Ratings History</h3>
+            <p style="font-size:0.85rem; color:#64748b; margin-top:4px;">Ratings and reviews given by you after completing trips in Madurai</p>
+          </div>
+          
+          <div style="display:flex; align-items:center; gap:16px; background:#f8fafc; padding:10px 16px; border-radius:12px; border:1px solid #e2e8f0;">
+            <div>
+              <small style="display:block; font-size:0.75rem; color:#64748b; font-weight:700;">TOTAL REVIEWS</small>
+              <strong style="font-size:1.1rem; color:var(--text-dark);">{{ userReviewMetrics.count || 0 }}</strong>
+            </div>
+            <div style="border-left:1px solid #cbd5e1; height:24px;"></div>
+            <div>
+              <small style="display:block; font-size:0.75rem; color:#64748b; font-weight:700;">AVERAGE RATING</small>
+              <strong style="font-size:1.1rem; color:#f59e0b;">{{ userReviewMetrics.averageRating || 0 }} ⭐</strong>
+            </div>
+          </div>
+        </div>
+
+        <div ng-if="!userReviews || userReviews.length === 0" style="padding:24px; text-align:center; color:#64748b; background:#f8fafc; border-radius:12px; border:1.5px dashed #cbd5e1;">
+          <span style="font-size:2rem; display:block; margin-bottom:8px;">✍️</span>
+          <p style="margin:0; font-size:0.95rem;">You haven't submitted any location reviews yet.</p>
+          <small style="color:#94a3b8;">When you complete a trip in <strong>My Confirmed Trips</strong>, you can rate and review each location!</small>
+        </div>
+
+        <div class="profile-reviews-grid" ng-if="userReviews && userReviews.length > 0" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:16px;">
+          <div ng-repeat="rev in userReviews" class="review-history-card">
+            <div class="review-history-header">
+              <h4>📍 {{ rev.place_name || rev.locationName }}</h4>
+              <span class="review-history-stars">
+                <span ng-repeat="n in [1,2,3,4,5]" style="color: {{ n <= rev.rating ? '#f59e0b' : '#cbd5e1' }}">★</span>
+              </span>
+            </div>
+            <p class="review-history-comment">"{{ rev.comment }}"</p>
+            <div class="review-history-date">
+              📅 {{ rev.date }} • {{ rev.rating }} / 5 Stars
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MODAL 1: AUTHENTICATION (LOGIN & REGISTER) -->
+  <div class="modal-overlay" ng-show="showAuthModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Account Portal</h3>
+        <button class="btn-close" ng-click="closeAuth()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="auth-tabs">
+          <button class="auth-tab-btn" ng-class="{active: authMode === 'login'}" ng-click="setAuthMode('login')">Log In</button>
+          <button class="auth-tab-btn" ng-class="{active: authMode === 'register'}" ng-click="setAuthMode('register')">Register Account</button>
+        </div>
+
+        <div class="auth-error" ng-show="authError">{{ authError }}</div>
+
+        <!-- REGISTER FORM -->
+        <form ng-submit="submitRegister()" ng-show="authMode === 'register'">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" 
+            ng-model="regForm.name" placeholder="Enter full name.." required>
+          
+
+            <p ng-show="regForm.name"
+              style="margin-top:8px;
+                      font-size:0.9rem;
+                      color:var(--primary);
+                      font-weight:600;">
+                👋 Welcome, {{ regForm.name }}!
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" ng-model="regForm.username" placeholder="Choose a unique username" required>
+          </div>
+
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input type="tel" ng-model="regForm.phone" placeholder="10-digit Mobile Number" required>
+          </div>
+
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" ng-model="regForm.email" placeholder="name@example.com" required>
+          </div>
+
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" ng-model="regForm.password" placeholder="Choose a strong password" required>
+            <div class="password-strength-indicator" ng-if="regForm.password" style="font-size: 0.8rem; margin-top: 4px; color: var(--text-muted);">
+              Password Strength: <strong ng-class="checkPasswordStrength(regForm.password).class">{{ checkPasswordStrength(regForm.password).label }}</strong>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-full mt-2">
+            Create Account & Continue ➔
+          </button>
+        </form>
+
+        <!-- LOGIN FORM -->
+        <form ng-submit="submitLogin()" ng-show="authMode === 'login'">
+          <div class="form-group">
+            <label>Username, Email or Phone</label>
+            <input type="text" ng-model="loginForm.identity" placeholder="Username, Email or Mobile" required>
+          </div>
+
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" ng-model="loginForm.password" placeholder="Enter your password" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-full mt-2">
+            Sign In ➔
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: TRIP CONFIRMATION & COST ESTIMATION -->
+  <div class="modal-overlay" ng-show="showConfirmModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Confirm & Save Trip Plan</h3>
+        <button class="btn-close" ng-click="closeConfirmation()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="payment-summary-box" style="background:#f8fafc; padding:1.25rem; border-radius:12px; margin-bottom:1.25rem; border:1px solid #e2e8f0;">
+          <h4 style="color:var(--primary); margin-bottom:0.25rem;">{{ activeBooking.title }}</h4>
+          <p style="font-size:0.85rem; color:var(--text-muted);">{{ currentUser.name }} • {{ currentUser.phone }}</p>
+          <div style="margin-top:12px; margin-bottom:12px;">
+            <label style="font-size:0.9rem; font-weight:600;">
+              Number of Travellers
+            </label>
+
+            <input
+              type="number"
+              min="1"
+              ng-model="travellers"
+              style="width:100%; padding:8px; margin-top:5px;
+                    border:1px solid #d1d5db; border-radius:6px;">
+
+              <p style="margin-top:8px; font-size:0.9rem;">
+                  👥 Total Travellers:
+                  <strong>{{ travellers }}</strong>
+              </p>
+          </div>
+          <hr style="margin:0.75rem 0; border:none; border-top:1px solid var(--border-light);">
+
+          <h5 style="font-size:0.85rem; font-weight:700; margin-bottom:0.5rem; color:#475569;">Stops & Cost Estimation:</h5>
+          <div id="confirm-cost-breakdown" style="margin-bottom:0.75rem;">
+            <div ng-repeat="s in activeBooking.stops" style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px dashed #e2e8f0;">
+              <span>{{ s.time }} - {{ s.title }}</span>
+              <strong style="color:#0f172a;">{{ s.estCost | currency:"₹":0 }}</strong>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; font-size:1.15rem; font-weight:800; margin-top:8px; color:var(--text-dark); border-top:2px solid #e2e8f0; padding-top:8px;">
+            <span>Estimated Total Budget:</span>
+            <span style="color:var(--accent-gold);">{{ travellers * activeBooking.totalFare | currency:"₹":0 }}</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Recommended Mode for Local Spending in Madurai:</label>
+          <select ng-model="payModeSelection" style="width:100%; padding:0.6rem; border-radius:8px; border:1.5px solid var(--border-light); font-size:0.9rem;">
+            <option value="Cash on Hand / Local Stalls">💵 Cash on Hand (Recommended for Auto / Street Stalls)</option>
+            <option value="UPI (GPay / PhonePe / Paytm)">📱 UPI (GPay / PhonePe at counters & shops)</option>
+            <option value="Credit / Debit Card at Hotels">💳 Card / Digital at Hotels & Restaurants</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary w-full mt-2" ng-click="saveConfirmedTrip()" style="padding:0.85rem;">
+          🎯 Save & View Route on Map ➔
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: PLACE / DESTINATION DETAIL MODAL -->
+  <div class="modal-overlay" ng-show="showDetailModal">
+    <div class="modal-card modal-large">
+      <div class="modal-header-image" ng-style="{'background-image': 'url(' + selectedSpot.image + ')'}">
+        <button class="btn-close circle-close" ng-click="closeSpotDetail()">✕</button>
+        <span class="spot-modal-cat-tag">{{ selectedSpot.categoryLabel }}</span>
+      </div>
+
+      <div class="modal-body">
+        <div class="spot-modal-header-row">
+          <h2>{{ selectedSpot.name }}</h2>
+          <span class="spot-modal-rating-badge">⭐ {{ selectedSpot.rating }} ({{ selectedSpot.reviews }}+ reviews)</span>
+        </div>
+
+        <p class="spot-modal-lead">{{ selectedSpot.description }}</p>
+        
+        <hr class="divider">
+
+        <div class="spot-modal-grid">
+          <div class="spot-detail-info-block">
+            <h4>📜 History & Significance</h4>
+            <p>{{ selectedSpot.fullStory }}</p>
+          </div>
+
+          <div class="spot-detail-sidebar">
+            <div class="info-card-mini">
+              <span>📍 Address:</span>
+              <strong>{{ selectedSpot.address || selectedSpot.location }}</strong>
+            </div>
+
+            <div class="info-card-mini">
+              <span>🕒 Open Timings:</span>
+              <strong>{{ selectedSpot.timings }}</strong>
+            </div>
+
+            <div class="info-card-mini">
+              <span>🎟️ Ticket / Price:</span>
+              <strong>{{ selectedSpot.entryFee === 0 ? 'Free Entry' : (selectedSpot.entryFee !== undefined ? (selectedSpot.entryFee | currency:"₹":0) : selectedSpot.price) }}</strong>
+            </div>
+
+            <div class="info-card-mini" ng-if="selectedSpot.dressCode">
+              <span>👗 Dress Code & Guidelines:</span>
+              <span>{{ selectedSpot.dressCode }}</span>
+            </div>
+
+            <div class="info-card-mini">
+              <span>🌅 Best Time to Visit:</span>
+              <span>{{ selectedSpot.bestTimeToVisit || 'Morning / Evening' }}</span>
+            </div>
+
+            <button class="btn btn-primary w-full mt-2" ng-click="routeToDetailSpot(selectedSpot)">
+              🚌 Find Bus Routes & Cabs to Here ➔
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: USER PROFILE MODAL -->
+  <div class="modal-overlay" ng-show="showProfileModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>👤 User Profile</h3>
+        <button class="btn-close" ng-click="closeProfileModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- View Mode -->
+        <div ng-if="!isEditingProfile">
+          <!-- Profile Header Card -->
+          <div class="profile-user-card">
+            <div class="avatar-lg">
+              {{ (currentUser.name || 'U').slice(0,2).toUpperCase() }}
+            </div>
+            <div class="profile-user-info">
+              <h4>{{ currentUser.name || 'Not provided' }}</h4>
+              <span class="badge-role">Explorer Account</span>
+            </div>
+            <button class="btn btn-outline btn-sm" ng-click="startEditProfile()" style="margin-left:auto;">
+              ✏️ Edit Profile
+            </button>
+          </div>
+
+          <!-- User Details Grid -->
+          <div class="profile-details-grid">
+            <div class="profile-detail-item">
+              <span class="detail-label">👤 Full Name</span>
+              <strong class="detail-value">{{ currentUser.name || 'Not provided' }}</strong>
+            </div>
+
+            <div class="profile-detail-item">
+              <span class="detail-label">📱 Phone Number</span>
+              <strong class="detail-value">{{ currentUser.phone || 'Not provided' }}</strong>
+            </div>
+
+            <div class="profile-detail-item">
+              <span class="detail-label">📧 Email Address</span>
+              <strong class="detail-value">{{ currentUser.email || 'Not provided' }}</strong>
+            </div>
+
+            <div class="profile-detail-item">
+              <span class="detail-label">📍 Address</span>
+              <strong class="detail-value" ng-class="{'text-muted': !currentUser.address}">
+                {{ currentUser.address || 'Not provided' }}
+              </strong>
+            </div>
+          </div>
+
+          <!-- Overall Trip Count Stats -->
+          <div class="profile-section-title">
+            📊 Trip Statistics
+          </div>
+          <div class="trip-stats-grid">
+            <div class="stat-card stat-total">
+              <span class="stat-num">{{ userStatistics.total_trips }}</span>
+              <span class="stat-lbl">Total Trips</span>
+            </div>
+            <div class="stat-card stat-confirmed">
+              <span class="stat-num">{{ getUserTripMetrics().confirmedCount }}</span>
+              <span class="stat-lbl">Confirmed Trips</span>
+            </div>
+            <div class="stat-card stat-pending">
+              <span class="stat-num">{{ getUserTripMetrics().createdCount }}</span>
+              <span class="stat-lbl">Pending Plans</span>
+            </div>
+          </div>
+
+          <!-- Reviews & Ratings from Django SQLite -->
+          <div class="profile-section-title" style="margin-top:20px;">
+            ⭐ My Reviews & Ratings ({{ userStatistics.reviews_given || 0 }} reviews • {{ userStatistics.average_rating || 0 }} ⭐ Avg)
+          </div>
+          <div class="visited-places-box" style="padding:14px;">
+            <div ng-if="!userReviews || userReviews.length === 0" class="visited-empty-state">
+              <span>✍️</span>
+              <p>No location reviews submitted yet. Rate & review locations when completing trips!</p>
+            </div>
+            <div ng-if="userReviews && userReviews.length > 0" style="display:flex; flex-direction:column; gap:10px;">
+              <div ng-repeat="rev in userReviews" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <strong style="font-size:0.9rem; color:#0f172a;">📍 {{ rev.place_name || rev.locationName }}</strong>
+                  <span style="color:#f59e0b; font-weight:700; font-size:0.85rem;">{{ rev.rating }} / 5 ★</span>
+                </div>
+                <p style="margin:4px 0 0 0; font-size:0.83rem; color:#475569; font-style:italic;">"{{ rev.comment }}"</p>
+                <small style="display:block; font-size:0.75rem; color:#94a3b8; margin-top:4px;">📅 {{ rev.date }}</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Edit Profile Mode -->
+        <div ng-if="isEditingProfile">
+          <form ng-submit="saveProfile()">
+            <div class="form-group">
+              <label>Full Name</label>
+              <input type="text" ng-model="editProfileForm.name" required>
+            </div>
+            <div class="form-group">
+              <label>Phone Number</label>
+              <input type="tel" ng-model="editProfileForm.phone" required>
+            </div>
+            <div class="form-group">
+              <label>Email Address</label>
+              <input type="email" ng-model="editProfileForm.email" required>
+            </div>
+            <div class="form-group">
+              <label>Address</label>
+              <textarea ng-model="editProfileForm.address" rows="2" placeholder="Enter your address in Madurai / Location"></textarea>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+              <button type="submit" class="btn btn-primary" style="flex:1;">💾 Save Profile</button>
+              <button type="button" class="btn btn-outline" ng-click="cancelEditProfile()">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 5: TRIP COMPLETION REVIEW MODAL -->
+  <div class="modal-overlay" ng-show="showReviewModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>⭐ Rate & Review Your Trip Locations</h3>
+        <button class="btn-close" ng-click="closeReviewModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size:0.9rem; color:#64748b; margin-bottom:16px;">
+          Please provide a 1–5 star rating and your feedback for each location visited in <strong>{{ tripToComplete.title }}</strong>:
+        </p>
+
+        <div style="max-height:360px; overflow-y:auto; padding-right:6px;">
+          <div ng-repeat="item in pendingReviews" class="review-item-card">
+            <h4>📍 {{ item.name }}</h4>
+            
+            <label style="display:block; font-size:0.8rem; font-weight:700; color:#475569;">Your Rating (1 to 5 Stars):</label>
+            <div class="star-rating-selector">
+              <span ng-repeat="star in [1, 2, 3, 4, 5]" 
+                    class="star" 
+                    ng-class="{filled: star <= item.rating}" 
+                    ng-click="setStarRating(item, star)">
+                ★
+              </span>
+              <span style="font-size:0.85rem; font-weight:700; color:#475569; margin-left:8px; align-self:center;">
+                {{ item.rating }} / 5
+              </span>
+            </div>
+
+            <div style="margin-top:10px;">
+              <label style="display:block; font-size:0.8rem; font-weight:700; color:#475569; margin-bottom:4px;">Review & Comments:</label>
+              <textarea class="form-input" style="width:100%; padding:8px 12px; font-size:0.85rem; border:1px solid #cbd5e1; border-radius:8px;" 
+                        rows="2" 
+                        placeholder="Share your experience at {{ item.name }}..." 
+                        ng-model="item.comment"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px; margin-top:20px; border-top:1px solid #f1f5f9; padding-top:16px;">
+          <button class="btn btn-primary" style="flex:1; padding:10px;" ng-click="submitTripReviews()">
+            🎯 Submit Reviews & Complete Trip ➔
+          </button>
+          <button class="btn btn-outline" ng-click="closeReviewModal()">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AngularJS Core Library -->
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+  <!-- ngAnimate powers the swoosh / live-tracker enter, leave & toggle animations used by the custom directives -->
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular-animate.min.js"></script>
+
+  <!-- Leaflet JS Library -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- App Scripts -->
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+
+  
+
+</body>
+</html>
