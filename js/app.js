@@ -28,7 +28,9 @@ app.factory('TripPlannerFactory', function () {
 
             if (!exists) {
                 var item = angular.copy(place);
-                item.estimatedTime = '';
+                if (typeof item.estimatedTime === 'undefined') {
+                    item.estimatedTime = '';
+                }
                 trip.push(item);
             }
 
@@ -913,6 +915,149 @@ $interval
     // Auto fetch location & weather on app load
     $scope.fetchRealLocationAndWeather();
 
+    // ==========================================
+    // RECOMMENDED PLANS FOR MADURAI
+    // ==========================================
+    $scope.recommendedPlans = [
+      {
+        id: 'rec_heritage',
+        title: 'Heritage & Temple Trail',
+        tag: 'Royal Heritage & Sacred Temples',
+        description: 'Explore the architectural wonders, sacred sanctuaries, and freedom trail of historic Madurai.',
+        icon: '🏛️',
+        estimatedDuration: 'Full Day (~8 Hours)',
+        places: [
+          {
+            id: 'place_meenakshi',
+            name: 'Meenakshi Amman Temple',
+            suggestedTime: '9:00 AM',
+            rating: 4.9,
+            categoryLabel: 'Spiritual & Heritage'
+          },
+          {
+            id: 'place_koodal_azhagar',
+            name: 'Koodal Azhagar Temple',
+            suggestedTime: '11:00 AM',
+            rating: 4.8,
+            categoryLabel: 'Spiritual & Heritage'
+          },
+          {
+            id: 'place_thirumalai',
+            name: 'Thirumalai Nayakkar Mahal',
+            suggestedTime: '2:00 PM',
+            rating: 4.7,
+            categoryLabel: 'Royal Heritage'
+          },
+          {
+            id: 'place_gandhi_museum',
+            name: 'Gandhi Memorial Museum',
+            suggestedTime: '4:00 PM',
+            rating: 4.6,
+            categoryLabel: 'Museum & Freedom Trail'
+          }
+        ]
+      },
+      {
+        id: 'rec_food',
+        title: 'Food & Local Experience',
+        tag: 'Authentic Flavours & Street Delicacies',
+        description: 'Savour Madurai’s legendary flavours from cooling Jigarthanda and Kari Dosa to pure ghee halwa.',
+        icon: '🍲',
+        estimatedDuration: 'Full Day Tasting Tour',
+        places: [
+          {
+            id: 'food_jigarthanda',
+            name: 'Famous Jigarthanda',
+            suggestedTime: '10:30 AM',
+            rating: 4.9,
+            categoryLabel: 'Signature Cooling Drink'
+          },
+          {
+            id: 'food_karidosa',
+            name: 'Konar Mess',
+            suggestedTime: '1:00 PM',
+            rating: 4.8,
+            categoryLabel: 'Iconic Madurai Non-Veg'
+          },
+          {
+            id: 'food_murugan_idli',
+            name: 'Murugan Idli Shop',
+            suggestedTime: '3:30 PM',
+            rating: 4.8,
+            categoryLabel: 'South Indian Breakfast'
+          },
+          {
+            id: 'food_bun_parotta',
+            name: 'Simmakal Bun Parotta',
+            suggestedTime: '6:00 PM',
+            rating: 4.7,
+            categoryLabel: 'Madurai Night Street Food'
+          },
+          {
+            id: 'food_halwa',
+            name: 'Nagapattinam Hot Ghee Wheat Halwa',
+            suggestedTime: '7:00 PM',
+            rating: 4.8,
+            categoryLabel: 'Traditional Sweet'
+          },
+          {
+            id: 'food_amma_mess',
+            name: 'Amma Mess',
+            suggestedTime: '8:00 PM',
+            rating: 4.7,
+            categoryLabel: 'Authentic Regional Non-Veg'
+          }
+        ]
+      }
+    ];
+
+    $scope.viewingRecommendedPlan = null;
+
+    $scope.viewRecommendedPlan = function(plan) {
+      $scope.viewingRecommendedPlan = plan;
+    };
+
+    $scope.closeRecommendedPlan = function() {
+      $scope.viewingRecommendedPlan = null;
+    };
+
+    $scope.confirmRecommendedPlan = function(plan) {
+      if (!plan || !plan.places) return;
+
+      // Clear existing custom trip to load this selected itinerary
+      TripPlannerFactory.clear();
+      $scope.newPlanTitle = plan.title;
+
+      plan.places.forEach(function(item) {
+        var basePlace = ($scope.places || []).find(p => p.id === item.id) ||
+                        ($scope.foods || []).find(f => f.id === item.id) ||
+                        {};
+        var copy = angular.copy(basePlace);
+        // Ensure name, rating, categoryLabel, and suggested estimated time are set
+        copy.id = item.id;
+        copy.name = item.name;
+        copy.rating = item.rating;
+        copy.categoryLabel = item.categoryLabel || copy.categoryLabel;
+        copy.estimatedTime = item.suggestedTime;
+
+        TripPlannerFactory.addPlace(copy);
+        $scope.validateTempleTiming(copy);
+      });
+
+      if ($scope.viewingRecommendedPlan) {
+        $scope.viewingRecommendedPlan = null;
+      }
+
+      $scope.showToast('✨ Loaded "' + plan.title + '" into Custom Trip Planner for review!');
+
+      setTimeout(function() {
+        var targetElem = document.getElementById('custom-trip-builder');
+        if (targetElem) {
+          targetElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    };
+
     $scope.recentPlaces = RecentlyViewedFactory.getRecentPlaces(); 
 
     // ==========================================
@@ -953,9 +1098,44 @@ $interval
         { start: "6:00 AM", end: "12:30 PM" },
         { start: "3:30 PM", end: "7:30 PM" }
       ],
+      "alagar kovil": [
+        { start: "6:00 AM", end: "12:30 PM" },
+        { start: "3:30 PM", end: "7:30 PM" }
+      ],
       "thirupparankundram murugan temple": [
         { start: "5:30 AM", end: "1:00 PM" },
         { start: "4:00 PM", end: "9:00 PM" }
+      ],
+      "thiruparankundram murugan temple": [
+        { start: "5:30 AM", end: "1:00 PM" },
+        { start: "4:00 PM", end: "9:00 PM" }
+      ]
+    };
+
+    const foodSchedules = {
+      "famous jigarthanda": [
+        { start: "10:00 AM", end: "9:00 PM" }
+      ],
+      "konar mess": [
+        { start: "10:00 AM", end: "9:00 PM" }
+      ],
+      "murugan idli shop": [
+        { start: "10:00 AM", end: "9:00 PM" }
+      ],
+      "murugan idli": [
+        { start: "10:00 AM", end: "9:00 PM" }
+      ],
+      "simmakal bun parotta": [
+        { start: "10:00 AM", end: "9:00 PM" }
+      ],
+      "simmakkal bun parotta": [
+        { start: "10:00 AM", end: "9:00 PM" }
+      ],
+      "nagapattinam hot ghee wheat halwa": [
+        { start: "10:00 AM", end: "9:00 PM" }
+      ],
+      "amma mess": [
+        { start: "10:00 AM", end: "9:00 PM" }
       ]
     };
 
@@ -972,21 +1152,36 @@ $interval
     }
 
     $scope.validateTempleTiming = function(place) {
+      if (!place) return;
       place.timingWarning = false;
+      place.timingWarningMessage = '';
       if (!place.estimatedTime) return;
       if (!place.name) return;
       
-      const normalizedName = place.name.toLowerCase().trim();
+      const normalizedName = (place.name || '').toLowerCase().trim();
+      const normalizedSpot = (place.spotName || '').toLowerCase().trim();
       let schedule = null;
+      let placeType = null;
       
       for (let temple in templeSchedules) {
-        if (normalizedName.includes(temple)) {
+        if (normalizedName.includes(temple) || (normalizedSpot && normalizedSpot.includes(temple))) {
           schedule = templeSchedules[temple];
+          placeType = 'temple';
           break;
         }
       }
+
+      if (!schedule) {
+        for (let food in foodSchedules) {
+          if (normalizedName.includes(food) || (normalizedSpot && normalizedSpot.includes(food))) {
+            schedule = foodSchedules[food];
+            placeType = 'food';
+            break;
+          }
+        }
+      }
       
-      if (!schedule) return; // Not a configured temple
+      if (!schedule) return; // Not a configured temple or food spot
       
       const selectedMins = parseTimeStr(place.estimatedTime);
       if (selectedMins === -1) return;
@@ -1002,7 +1197,18 @@ $interval
       }
       
       place.timingWarning = !isOpen;
+      if (!isOpen) {
+        if (placeType === 'food') {
+          place.timingWarningMessage = '⚠️ This food spot is closed at the selected time. Please choose another time.';
+        } else {
+          place.timingWarningMessage = '⚠️ This temple is closed at the selected time. Please choose another time.';
+        }
+      } else {
+        place.timingWarningMessage = '';
+      }
     };
+    $scope.validateTiming = $scope.validateTempleTiming;
+    $scope.validatePlaceTiming = $scope.validateTempleTiming;
 
     // Favourite Places Factory - REPLACED BY EXPRESS MONGODB API
     $scope.favourites = [];
@@ -1737,6 +1943,7 @@ $interval
           places: angular.copy($scope.customTrip).map(p => ({
             id: p.id,
             name: p.name,
+            rating: p.rating,
             estimatedTime: p.estimatedTime || 'Not specified',
             image: p.image,
             categoryLabel: p.categoryLabel || p.category || 'Spot',

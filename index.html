@@ -265,8 +265,67 @@
         </div>
       </div>
 
+      <!-- RECOMMENDED PLANS FOR MADURAI -->
+      <div class="recommended-plans-section" style="margin-bottom: 35px;">
+        <div style="margin-bottom: 16px;">
+          <h3 style="font-size:1.3rem; font-weight:800; color:var(--text-dark); display:flex; align-items:center; gap:8px; margin:0;">
+            ✨ Recommended Plans for Madurai
+          </h3>
+          <p style="font-size:0.85rem; color:#64748b; margin-top:4px; margin-bottom:0;">
+            Popular curated itineraries with verified ratings and optimal visit timings
+          </p>
+        </div>
+
+        <div class="recommended-plans-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:20px;">
+          <div ng-repeat="plan in recommendedPlans" class="recommended-plan-card" style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:22px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; justify-content:space-between; transition:all 0.2s ease;">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; gap:8px;">
+                <h4 style="font-size:1.2rem; font-weight:800; color:var(--text-dark); margin:0;">
+                  {{ plan.icon }} {{ plan.title }}
+                </h4>
+                <span class="status-badge" style="background:#fef3c7; color:#b45309; font-size:0.75rem; padding:3px 10px; border-radius:12px; font-weight:700; white-space:nowrap;">
+                  {{ plan.places.length }} PLACES
+                </span>
+              </div>
+
+              <p style="font-size:0.85rem; color:#64748b; margin-bottom:14px; line-height:1.4;">
+                {{ plan.description }}
+              </p>
+
+              <!-- Places Preview List in Suggested Order -->
+              <div style="background:#f8fafc; border-radius:12px; padding:12px 14px; margin-bottom:16px; border:1px solid #f1f5f9;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <strong style="font-size:0.8rem; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">Places in Suggested Order:</strong>
+                  <small style="color:#64748b; font-size:0.75rem;">{{ plan.estimatedDuration }}</small>
+                </div>
+                
+                <div ng-repeat="p in plan.places" style="font-size:0.85rem; padding:6px 0; border-bottom:1px dashed #e2e8f0; display:flex; justify-content:space-between; align-items:center; gap:8px;" ng-style="$last && {'border-bottom':'none'}">
+                  <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <span style="font-size:0.75rem; font-weight:700; color:#64748b; background:#e2e8f0; border-radius:50%; width:18px; height:18px; display:inline-flex; align-items:center; justify-content:center;">{{ $index + 1 }}</span>
+                    <strong style="color:var(--text-dark); font-size:0.88rem;">{{ p.name }}</strong>
+                    <span class="trip-place-rating" ng-if="p.rating" style="font-size:0.75rem; padding:1px 6px;">⭐ {{ p.rating }}/5</span>
+                  </div>
+                  <span style="color:#0284c7; background:#e0f2fe; padding:2px 8px; border-radius:8px; font-size:0.78rem; font-weight:700; white-space:nowrap;">
+                    🕒 {{ p.suggestedTime }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:10px; border-top:1px solid #f1f5f9; padding-top:14px; margin-top:4px;">
+              <button class="btn btn-outline" style="flex:1; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px;" ng-click="viewRecommendedPlan(plan)">
+                👁️ View Plan
+              </button>
+              <button class="btn btn-primary" style="flex:1; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px;" ng-click="confirmRecommendedPlan(plan)">
+                ✅ Confirm Plan
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- CREATE MY OWN TRIP SECTION -->
-      <div class="custom-trip-card" style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:24px; box-shadow:var(--shadow-md); margin-bottom:30px;">
+      <div class="custom-trip-card" id="custom-trip-builder" style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:24px; box-shadow:var(--shadow-md); margin-bottom:30px;">
         <h3 style="margin-bottom:20px; font-size:1.3rem; color:var(--text-dark); display:flex; align-items:center; gap:8px;">
           📝 Create My Own Trip
         </h3>
@@ -285,21 +344,27 @@
           
           <!-- Live Search Suggestions Dropdown -->
           <div ng-if="tripSearch && !selectedPlace" style="position:absolute; z-index:100; background:white; border:1px solid #cbd5e1; border-radius:8px; width:100%; max-width:500px; max-height:240px; overflow-y:auto; box-shadow:0 10px 25px rgba(0,0,0,0.1); margin-top:4px;">
-            <div ng-repeat="place in places | filter:tripSearch" ng-click="selectPlace(place); addPlaceToTrip()" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f5f9; display:flex; justify-space-between; align-items:center;">
-              <div>
-                <strong style="color:var(--text-dark);">📍 {{ place.name }}</strong>
-                <br>
-                <small style="color:#64748b;">{{ place.categoryLabel || place.category }}</small>
+            <div ng-repeat="place in places | filter:tripSearch" ng-click="selectPlace(place); addPlaceToTrip()" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <strong style="color:var(--text-dark);">📍 {{ place.name }}</strong>
+                  <span class="trip-place-rating" ng-if="place.rating">⭐ {{ place.rating }}/5</span>
+                  <span class="trip-place-rating unrated" ng-if="!place.rating">Not rated yet</span>
+                </div>
+                <small style="color:#64748b; display:block; margin-top:2px;">{{ place.categoryLabel || place.category }}</small>
               </div>
-              <span style="color:var(--primary); font-weight:700; font-size:0.85rem;">+ Add</span>
+              <span style="color:var(--primary); font-weight:700; font-size:0.85rem; flex-shrink:0;">+ Add</span>
             </div>
-            <div ng-repeat="food in foods | filter:tripSearch" ng-click="selectPlace(food); addPlaceToTrip()" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <strong style="color:var(--text-dark);">🍽️ {{ food.name }}</strong>
-                <br>
-                <small style="color:#64748b;">Food Spot • {{ food.spotName }}</small>
+            <div ng-repeat="food in foods | filter:tripSearch" ng-click="selectPlace(food); addPlaceToTrip()" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <strong style="color:var(--text-dark);">🍽️ {{ food.name }}</strong>
+                  <span class="trip-place-rating" ng-if="food.rating">⭐ {{ food.rating }}/5</span>
+                  <span class="trip-place-rating unrated" ng-if="!food.rating">Not rated yet</span>
+                </div>
+                <small style="color:#64748b; display:block; margin-top:2px;">Food Spot • {{ food.spotName }}</small>
               </div>
-              <span style="color:var(--primary); font-weight:700; font-size:0.85rem;">+ Add</span>
+              <span style="color:var(--primary); font-weight:700; font-size:0.85rem; flex-shrink:0;">+ Add</span>
             </div>
           </div>
         </div>
@@ -313,9 +378,11 @@
           </div>
 
           <div ng-repeat="place in customTrip track by $index" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; margin-bottom:10px; flex-wrap:wrap; gap:12px;">
-            <div style="display:flex; align-items:center; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               <span style="font-size:1.1rem;">📍</span>
               <strong style="color:var(--text-dark); font-size:0.95rem;">{{ place.name }}</strong>
+              <span class="trip-place-rating" ng-if="place.rating">⭐ {{ place.rating }}/5</span>
+              <span class="trip-place-rating unrated" ng-if="!place.rating">Not rated yet</span>
             </div>
 
             <div style="display:flex; align-items:center; gap:10px;">
@@ -324,7 +391,7 @@
                   <option value="">Estimated time (optional)</option>
                 </select>
                 <div ng-if="place.timingWarning" style="color:#ef4444; font-size:0.75rem; margin-top:4px; max-width: 160px; line-height: 1.2;">
-                  ⚠️ This temple is closed at the selected time. Please choose another time.
+                  {{ place.timingWarningMessage || '⚠️ This temple is closed at the selected time. Please choose another time.' }}
                 </div>
               </div>
               
@@ -364,9 +431,13 @@
 
               <div style="background:#f8fafc; border-radius:8px; padding:10px 12px; margin-bottom:15px; border:1px solid #f1f5f9;">
                 <strong style="font-size:0.85rem; color:#475569; display:block; margin-bottom:6px;">Places Included:</strong>
-                <div ng-repeat="p in plan.places" style="font-size:0.85rem; margin-bottom:4px; display:flex; justify-content:space-between;">
-                  <span>📍 {{ p.name }}</span>
-                  <span style="color:#64748b; font-size:0.8rem;">⏱️ {{ p.estimatedTime || 'Not specified' }}</span>
+                <div ng-repeat="p in plan.places" style="font-size:0.85rem; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <span>📍 {{ p.name }}</span>
+                    <span class="trip-place-rating" style="font-size:0.75rem; padding:1px 6px;" ng-if="p.rating">⭐ {{ p.rating }}/5</span>
+                    <span class="trip-place-rating unrated" style="font-size:0.75rem; padding:1px 6px;" ng-if="!p.rating">Not rated yet</span>
+                  </div>
+                  <span style="color:#64748b; font-size:0.8rem; white-space:nowrap;">⏱️ {{ p.estimatedTime || 'Not specified' }}</span>
                 </div>
               </div>
             </div>
@@ -523,9 +594,13 @@
               <!-- Itemized Places & Estimated Time -->
               <div style="background:#f8fafc; border-radius:8px; padding:10px 14px; margin:10px 0; border:1px solid #f1f5f9;">
                 <strong style="font-size:0.85rem; color:#475569; display:block; margin-bottom:6px;">Itinerary Places & Duration:</strong>
-                <div ng-if="trip.places" ng-repeat="p in trip.places" style="font-size:0.85rem; padding:3px 0; display:flex; justify-content:space-between;">
-                  <span>📍 <strong>{{ p.name }}</strong></span>
-                  <span style="color:#64748b;">Estimated time: {{ p.estimatedTime || 'Not specified' }}</span>
+                <div ng-if="trip.places" ng-repeat="p in trip.places" style="font-size:0.85rem; padding:3px 0; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <span>📍 <strong>{{ p.name }}</strong></span>
+                    <span class="trip-place-rating" style="font-size:0.75rem; padding:1px 6px;" ng-if="p.rating">⭐ {{ p.rating }}/5</span>
+                    <span class="trip-place-rating unrated" style="font-size:0.75rem; padding:1px 6px;" ng-if="!p.rating">Not rated yet</span>
+                  </div>
+                  <span style="color:#64748b; white-space:nowrap;">Estimated time: {{ p.estimatedTime || 'Not specified' }}</span>
                 </div>
                 <div ng-if="!trip.places && trip.stops" ng-repeat="s in trip.stops" style="font-size:0.85rem; padding:3px 0; display:flex; justify-content:space-between;">
                   <span>📍 <strong>{{ s.title }}</strong></span>
@@ -729,6 +804,58 @@
 
     </div>
   </main>
+
+  <!-- MODAL: VIEW RECOMMENDED PLAN DETAILS -->
+  <div class="modal-overlay" ng-show="viewingRecommendedPlan">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>{{ viewingRecommendedPlan.icon }} {{ viewingRecommendedPlan.title }}</h3>
+        <button class="btn-close" ng-click="closeRecommendedPlan()">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px;">
+        <div style="background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; padding:10px 14px; border-radius:10px; margin-bottom:16px; font-size:0.85rem; display:flex; align-items:center; gap:8px;">
+          <span>ℹ️</span> {{ viewingRecommendedPlan.description }}
+        </div>
+
+        <h4 style="font-size:1rem; font-weight:800; color:var(--text-dark); margin-bottom:12px;">
+          Places in Suggested Order ({{ viewingRecommendedPlan.places.length }} Stops):
+        </h4>
+
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+          <div ng-repeat="p in viewingRecommendedPlan.places" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-weight:800; color:#475569; background:#e2e8f0; border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center; font-size:0.85rem;">{{ $index + 1 }}</span>
+              <div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <strong style="color:var(--text-dark); font-size:0.95rem;">{{ p.name }}</strong>
+                  <span class="trip-place-rating" ng-if="p.rating">⭐ {{ p.rating }}/5</span>
+                  <span class="trip-place-rating unrated" ng-if="!p.rating">Not rated yet</span>
+                </div>
+                <small style="color:#64748b;">{{ p.categoryLabel || 'Attraction' }}</small>
+              </div>
+            </div>
+            
+            <div style="text-align:right;">
+              <span style="color:#0284c7; background:#e0f2fe; border:1px solid #bae6fd; padding:3px 10px; border-radius:12px; font-size:0.82rem; font-weight:700; white-space:nowrap; display:inline-block;">
+                🕒 {{ p.suggestedTime }}
+              </span>
+              <small style="display:block; color:#16a34a; font-size:0.75rem; margin-top:3px; font-weight:600;">✓ Open at this time</small>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid #e2e8f0; padding-top:16px; display:flex; gap:12px; justify-content:flex-end;">
+          <button class="btn btn-outline" ng-click="closeRecommendedPlan()">
+            Close
+          </button>
+          <button class="btn btn-primary" style="font-weight:700;" ng-click="confirmRecommendedPlan(viewingRecommendedPlan)">
+            ✅ Confirm & Load Plan
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL 1: AUTHENTICATION (LOGIN & REGISTER) -->
   <div class="modal-overlay" ng-show="showAuthModal">

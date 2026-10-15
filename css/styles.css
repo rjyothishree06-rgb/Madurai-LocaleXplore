@@ -2120,3 +2120,27 @@ button, input, select {
   font-weight: 800;
   font-size: 0.75rem;
 }
+
+/* TRIP PLANNER PLACE RATING BADGES */
+.trip-place-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  padding: 2px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.trip-place-rating.unrated {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
